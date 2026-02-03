@@ -1,0 +1,10 @@
+# Cargo configuration for LSM-Tree Learning Project
+
+# Environment variables for RocksDB compilation (macOS Homebrew)
+[env]
+ROCKSDB_LIB_DIR = "/opt/homebrew/lib"
+SNAPPY_LIB_DIR = "/opt/homebrew/lib"
+
+# Default target for Apple Silicon
+[build]
+target = "aarch64-apple-darwin"

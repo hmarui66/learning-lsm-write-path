@@ -1,6 +1,6 @@
-use std::hint::black_box;
 use std::time::Duration;
 use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId, Throughput, BatchSize};
+use rocksdb::{DB, Options, WriteOptions};
 
 const KEY_SIZE: usize = 16;
 const VALUE_SIZE: usize = 100;
@@ -12,6 +12,30 @@ fn generate_key(i: u64) -> Vec<u8> {
 
 fn generate_value(size: usize) -> Vec<u8> {
     vec![b'x'; size]
+}
+
+fn setup_rocksdb(path: &str) -> DB {
+    let mut opts = Options::default();
+    opts.create_if_missing(true);
+
+    // MemTable設定
+    opts.set_write_buffer_size(MEMTABLE_SIZE_THRESHOLD);
+    opts.set_max_write_buffer_number(3);
+    opts.set_min_write_buffer_number_to_merge(1);
+
+    // Bulkload最適化設定（benchmark.shに合わせる）
+    opts.set_disable_auto_compactions(true);  // 自動コンパクション無効化
+    opts.set_allow_concurrent_memtable_write(false);  // 並行書き込み無効化
+
+    // Level 0コンパクショントリガーを極端に高く設定
+    opts.set_level_zero_file_num_compaction_trigger(1000000);
+    opts.set_level_zero_slowdown_writes_trigger(1000000);
+    opts.set_level_zero_stop_writes_trigger(1000000);
+
+    // ディレクトリが存在する場合は削除
+    let _ = std::fs::remove_dir_all(path);
+
+    DB::open(&opts, path).expect("Failed to open RocksDB")
 }
 
 fn benchmark_bulkload_random(c: &mut Criterion) {
@@ -36,6 +60,7 @@ fn benchmark_bulkload_random(c: &mut Criterion) {
             BenchmarkId::new("keys", num_keys),
             num_keys,
             |b, &num_keys| {
+                let mut iteration = 0;
                 b.iter_batched(
                     || {
                         // ランダムな順序でキーを生成
@@ -47,15 +72,25 @@ fn benchmark_bulkload_random(c: &mut Criterion) {
                             keys.swap(i, j);
                         }
 
-                        (keys, generate_value(VALUE_SIZE))
+                        iteration += 1;
+                        let db_path = format!("/tmp/rocksdb_bench_random_{}", iteration);
+                        let db = setup_rocksdb(&db_path);
+                        (db, db_path, keys, generate_value(VALUE_SIZE))
                     },
-                    |(keys, value)| {
-                        // TODO: LSM-Treeへの書き込み実装
-                        // 例: lsm_tree.put(key, value)
+                    |(db, db_path, keys, value)| {
+                        // WriteOptions: WAL無効化、fsync無効化
+                        let mut write_opts = WriteOptions::default();
+                        write_opts.disable_wal(true);
+                        write_opts.set_sync(false);
+
+                        // 単純なPut操作（batch_size=1相当）
                         for key_num in keys {
                             let key = generate_key(key_num);
-                            black_box((&key, &value));
+                            db.put_opt(&key, &value, &write_opts).expect("Failed to put");
                         }
+
+                        drop(db);
+                        let _ = std::fs::remove_dir_all(db_path);
                     },
                     BatchSize::LargeInput,
                 );
@@ -83,14 +118,28 @@ fn benchmark_bulkload_sequential(c: &mut Criterion) {
             BenchmarkId::new("keys", num_keys),
             num_keys,
             |b, &num_keys| {
+                let mut iteration = 0;
                 b.iter_batched(
-                    || generate_value(VALUE_SIZE),
-                    |value| {
-                        // TODO: LSM-Treeへの書き込み実装
+                    || {
+                        iteration += 1;
+                        let db_path = format!("/tmp/rocksdb_bench_sequential_{}", iteration);
+                        let db = setup_rocksdb(&db_path);
+                        (db, db_path, generate_value(VALUE_SIZE))
+                    },
+                    |(db, db_path, value)| {
+                        // WriteOptions: WAL無効化、fsync無効化
+                        let mut write_opts = WriteOptions::default();
+                        write_opts.disable_wal(true);
+                        write_opts.set_sync(false);
+
+                        // 単純なPut操作（batch_size=1相当）
                         for i in 0..num_keys {
                             let key = generate_key(i);
-                            black_box((&key, &value));
+                            db.put_opt(&key, &value, &write_opts).expect("Failed to put");
                         }
+
+                        drop(db);
+                        let _ = std::fs::remove_dir_all(db_path);
                     },
                     BatchSize::LargeInput,
                 );
