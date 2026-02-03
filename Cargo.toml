@@ -12,3 +12,7 @@ criterion = { version = "0.8", features = ["html_reports"] }
 [[bench]]
 name = "write_path"
 harness = false
+
+[[bench]]
+name = "param_test"
+harness = false
