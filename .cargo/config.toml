@@ -1,0 +1,3 @@
+# Default target for Apple Silicon
+[build]
+target = "aarch64-apple-darwin"

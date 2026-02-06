@@ -7,6 +7,7 @@ edition = "2024"
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
+tempfile = "3.14"
 
 [[bench]]
 name = "write_path"

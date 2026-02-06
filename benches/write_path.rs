@@ -1,6 +1,7 @@
 use std::hint::black_box;
 use std::time::Duration;
 use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId, Throughput, BatchSize};
+use learning_lsm_write_path::WritePath;
 
 const KEY_SIZE: usize = 16;
 const VALUE_SIZE: usize = 100;
@@ -50,12 +51,17 @@ fn benchmark_bulkload_random(c: &mut Criterion) {
                         (keys, generate_value(VALUE_SIZE))
                     },
                     |(keys, value)| {
-                        // TODO: LSM-Treeへの書き込み実装
-                        // 例: lsm_tree.put(key, value)
+                        let temp_dir = tempfile::tempdir().unwrap();
+                        let write_path = WritePath::new(temp_dir.path(), MEMTABLE_SIZE_THRESHOLD).unwrap();
+
                         for key_num in keys {
                             let key = generate_key(key_num);
-                            black_box((&key, &value));
+                            write_path.put(key, value.clone()).unwrap();
                         }
+
+                        // 最後にフラッシュして全データをディスクに書き出す
+                        write_path.flush().unwrap();
+                        black_box(write_path);
                     },
                     BatchSize::LargeInput,
                 );
@@ -86,11 +92,17 @@ fn benchmark_bulkload_sequential(c: &mut Criterion) {
                 b.iter_batched(
                     || generate_value(VALUE_SIZE),
                     |value| {
-                        // TODO: LSM-Treeへの書き込み実装
+                        let temp_dir = tempfile::tempdir().unwrap();
+                        let write_path = WritePath::new(temp_dir.path(), MEMTABLE_SIZE_THRESHOLD).unwrap();
+
                         for i in 0..num_keys {
                             let key = generate_key(i);
-                            black_box((&key, &value));
+                            write_path.put(key, value.clone()).unwrap();
                         }
+
+                        // 最後にフラッシュして全データをディスクに書き出す
+                        write_path.flush().unwrap();
+                        black_box(write_path);
                     },
                     BatchSize::LargeInput,
                 );
