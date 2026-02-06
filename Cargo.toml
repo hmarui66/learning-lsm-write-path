@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+crossbeam-skiplist = "0.1"
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
@@ -11,4 +12,12 @@ tempfile = "3.14"
 
 [[bench]]
 name = "write_path"
+harness = false
+
+[[bench]]
+name = "write_path_skiplist"
+harness = false
+
+[[bench]]
+name = "skiplist_raw"
 harness = false
