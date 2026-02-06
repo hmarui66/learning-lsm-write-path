@@ -2,7 +2,7 @@
 
 ## Environment
 
-- **RocksDB Version**: 0.24.0 (librocksdb-sys v0.17.3+10.4.2)
+- **RocksDB Version**: 10.7.5_1 (Rust crate: rocksdb 0.24.0, librocksdb-sys v0.17.3+10.4.2)
 - **Rust Version**: 1.93.0
 - **Platform**: macOS (aarch64-apple-darwin)
 - **Benchmark Tool**: Criterion 0.8.1
