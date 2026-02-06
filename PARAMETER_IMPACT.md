@@ -47,17 +47,29 @@
 
 **Conclusion**: Concurrent memtable writes have **minimal impact** on single-threaded workloads. The benefit would be more apparent in multi-threaded scenarios.
 
+### 5. Manual WAL Flush - **SIGNIFICANT IMPACT**
+
+| Setting | Time | Throughput | Impact |
+|---------|------|------------|--------|
+| manual_wal_flush=false (default) | 256.09 ms | 43.20 MiB/s | Baseline |
+| manual_wal_flush=true | 67.95 ms | 162.80 MiB/s | **3.8x faster** |
+
+**Conclusion**: Manual WAL flush has **significant impact** when WAL is enabled. Disabling automatic WAL flush provides a 3.8x speedup by buffering WAL writes in memory instead of flushing on every operation.
+
+**Note**: This test was performed with `disable_wal=false` (WAL enabled) to measure the impact of automatic vs manual flushing.
+
 ## Overall Analysis
 
 ### Critical Parameters (High Impact)
 
-1. **disable_wal=true**: 4.4x speedup - **Essential for bulk load**
-2. **sync=false**: Avoids 5000x slowdown - **Essential for bulk load**
+1. **sync=false**: Avoids 5000x slowdown - **Essential for performance**
+2. **disable_wal=true**: 4.4x speedup - **Essential for bulk load**
+3. **manual_wal_flush=true**: 3.8x speedup (when WAL enabled) - **Important for durability with performance**
 
 ### Minor Parameters (Low Impact)
 
-3. **disable_auto_compactions**: ~2% difference - Minimal impact
-4. **allow_concurrent_memtable_write**: ~1% difference - Minimal impact
+4. **disable_auto_compactions**: ~2% difference - Minimal impact
+5. **allow_concurrent_memtable_write**: ~1% difference - Minimal impact
 
 ## Recommendations
 
@@ -70,10 +82,11 @@ write_opts.disable_wal(true);  // CRITICAL: 4.4x speedup
 write_opts.set_sync(false);    // CRITICAL: Avoids extreme slowdown
 ```
 
-### For Production (Durability)
+### For Production (Durability with Good Performance)
 ```rust
 opts.set_disable_auto_compactions(false);  // Enable compaction
 opts.set_allow_concurrent_memtable_write(true);  // Better for multi-threaded
+opts.set_manual_wal_flush(true);  // IMPORTANT: 3.8x speedup with WAL enabled
 
 write_opts.disable_wal(false);  // Enable WAL for durability
 write_opts.set_sync(false);     // Still avoid fsync for performance
@@ -90,10 +103,15 @@ write_opts.set_sync(true);      // Enable fsync (5000x slower!)
 
 ## Key Insights
 
-1. **WAL and fsync dominate performance**: These two parameters have orders of magnitude more impact than any other settings.
+1. **I/O operations dominate performance**: sync, WAL, and WAL flushing have orders of magnitude more impact than any other settings.
 
-2. **Auto compaction and concurrent writes are red herrings**: Despite being mentioned in benchmark.sh, they have minimal impact on write performance for single-threaded workloads.
+2. **Manual WAL flush is a middle ground**: With `manual_wal_flush=true`, you can keep WAL enabled for durability while achieving 3.8x speedup by avoiding automatic flushes on every write.
 
-3. **The real optimization is I/O avoidance**: Disabling WAL and fsync means avoiding disk writes and synchronization, which are the true bottlenecks.
+3. **Auto compaction and concurrent writes are red herrings**: Despite being mentioned in benchmark.sh, they have minimal impact on write performance for single-threaded workloads.
 
-4. **Trade-off is durability vs performance**: The 4.4x speedup from disabling WAL comes at the cost of losing crash recovery capabilities.
+4. **The real optimization is I/O avoidance**: Disabling WAL and fsync means avoiding disk writes and synchronization, which are the true bottlenecks.
+
+5. **Trade-off hierarchy**:
+   - **Maximum performance**: `disable_wal=true` (4.4x speedup, no durability)
+   - **Balanced**: `disable_wal=false` + `manual_wal_flush=true` (3.8x speedup, maintains durability)
+   - **Maximum durability**: `disable_wal=false` + `sync=true` (5000x slower, crash-safe)

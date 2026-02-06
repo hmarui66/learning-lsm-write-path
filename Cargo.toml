@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 rocksdb = "0.24"
+libc = "0.2"
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
@@ -15,4 +16,8 @@ harness = false
 
 [[bench]]
 name = "param_test"
+harness = false
+
+[[bench]]
+name = "pwrite_baseline"
 harness = false
