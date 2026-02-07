@@ -3,10 +3,10 @@
 ## Environment
 
 - **Implementation**: Custom Rust logging system with SkipList-based MemTable
-- **SkipList Library**: crossbeam-skiplist 0.1 (lock-free concurrent skiplist)
+- **SkipList Library**: crossbeam-skiplist 0.1.3 (lock-free concurrent skiplist)
 - **Rust Version**: 1.93.0
 - **Platform**: macOS (aarch64-apple-darwin)
-- **Benchmark Tool**: Criterion 0.8.1
+- **Benchmark Tool**: Criterion 0.8.2
 
 ## Configuration
 
@@ -41,9 +41,9 @@ Random order insertion with SkipList maintaining sorted order.
 
 | Keys | Time | Throughput | Operations/sec |
 |------|------|------------|----------------|
-| 100,000 | 111.74 ms | 99 MiB/s | 895,000 ops/s |
-| 600,000 | 1.24 s | 53 MiB/s | 484,000 ops/s |
-| 3,000,000 | 4.88 s | 68 MiB/s | 615,000 ops/s |
+| 100,000 | 116.03 ms | 95 MiB/s | 862,000 ops/s |
+| 600,000 | 1.25 s | 53 MiB/s | 480,000 ops/s |
+| 3,000,000 | 4.72 s | 70 MiB/s | 635,000 ops/s |
 
 ### Bulk Load - Sequential Order
 
@@ -51,17 +51,17 @@ Sequential order insertion (best case for SkipList).
 
 | Keys | Time | Throughput | Operations/sec |
 |------|------|------------|----------------|
-| 100,000 | 62.96 ms | 176 MiB/s | 1,588,000 ops/s |
-| 600,000 | 400.27 ms | 166 MiB/s | 1,499,000 ops/s |
-| 3,000,000 | 1.53 s | 217 MiB/s | 1,961,000 ops/s |
+| 100,000 | 63.33 ms | 175 MiB/s | 1,579,000 ops/s |
+| 600,000 | 390.29 ms | 170 MiB/s | 1,538,000 ops/s |
+| 3,000,000 | 1.50 s | 221 MiB/s | 1,993,000 ops/s |
 
 ## Analysis
 
 ### Performance Comparison
 
 - **Sequential vs Random**: Sequential writes are **1.8-3.2x faster** than random writes
-- **Random Write Throughput**: 53-99 MiB/s (484-895K ops/s)
-- **Sequential Write Throughput**: 166-217 MiB/s (1.5-2.0M ops/s)
+- **Random Write Throughput**: 53-95 MiB/s (480-862K ops/s)
+- **Sequential Write Throughput**: 170-221 MiB/s (1.5-2.0M ops/s)
 
 ### Comparison with Vec-based Implementation
 
@@ -70,12 +70,12 @@ Vec-based (same hardware):
 - Sequential order: ~350 MiB/s (3.2M ops/s)
 
 SkipList-based:
-- Random order: ~68 MiB/s (615K ops/s)
-- Sequential order: ~166 MiB/s (1.5M ops/s)
+- Random order: ~70 MiB/s (635K ops/s)
+- Sequential order: ~221 MiB/s (2.0M ops/s)
 
 **Performance vs Vec-based:**
-- Random order: **5.0x slower** (20% of Vec performance)
-- Sequential order: **2.1x slower** (47% of Vec performance)
+- Random order: **4.9x slower** (20% of Vec performance)
+- Sequential order: **1.6x slower** (63% of Vec performance)
 
 ### Comparison with Naive Logging (Vec-based)
 
@@ -84,12 +84,12 @@ Naive Logging (Vec):
 - Sequential order: 3.2-4.1M ops/s (351-452 MiB/s)
 
 SkipList Implementation:
-- Random order: 0.5-0.9M ops/s (53-99 MiB/s)
-- Sequential order: 1.5-2.0M ops/s (166-217 MiB/s)
+- Random order: 0.5-0.9M ops/s (53-95 MiB/s)
+- Sequential order: 1.5-2.0M ops/s (170-221 MiB/s)
 
 **Degradation from Naive Logging:**
-- Random order: **6.6x slower** (15% of Vec throughput)
-- Sequential order: **2.1x slower** (48% of Vec throughput)
+- Random order: **6.4x slower** (16% of Vec throughput)
+- Sequential order: **2.0x slower** (49% of Vec throughput)
 
 ### Scalability
 
@@ -176,10 +176,10 @@ Random insertion:
 
 | Metric | Vec (Random) | SkipList (Random) | Vec (Seq) | SkipList (Seq) |
 |--------|--------------|-------------------|-----------|----------------|
-| Time | 735 ms | 4.88 s | 743 ms | 1.53 s |
-| Throughput | 451 MiB/s | 68 MiB/s | 447 MiB/s | 217 MiB/s |
-| Ops/sec | 4.08M | 615K | 4.04M | 1.96M |
-| Relative | 1.0x | 0.15x | 1.0x | 0.49x |
+| Time | 746 ms | 4.72 s | 720 ms | 1.50 s |
+| Throughput | 445 MiB/s | 70 MiB/s | 461 MiB/s | 221 MiB/s |
+| Ops/sec | 4.02M | 635K | 4.17M | 2.00M |
+| Relative | 1.0x | 0.16x | 1.0x | 0.48x |
 
 ## Trade-offs
 
@@ -191,8 +191,8 @@ Random insertion:
 - **Natural LSM-tree fit**: Matches typical LSM-tree MemTable design
 
 ### Disadvantages
-- **5-7x slower writes**: Compared to Vec for random inserts
-- **2x slower writes**: Compared to Vec for sequential inserts
+- **5-6x slower writes**: Compared to Vec for random inserts
+- **1.6-2x slower writes**: Compared to Vec for sequential inserts
 - **Higher memory overhead**: Pointer overhead per entry
 - **Complex implementation**: More code complexity than Vec
 - **Cache unfriendly**: Poor memory locality vs sequential Vec
@@ -266,8 +266,8 @@ The better sequential performance is because:
 
 | Feature | Vec-based | SkipList-based |
 |---------|-----------|----------------|
-| Write Speed (Random) | 342-451 MiB/s | 53-99 MiB/s |
-| Write Speed (Sequential) | 347-452 MiB/s | 166-217 MiB/s |
+| Write Speed (Random) | 342-451 MiB/s | 53-95 MiB/s |
+| Write Speed (Sequential) | 347-452 MiB/s | 170-221 MiB/s |
 | Memory Overhead | Low | Medium-High |
 | Code Complexity | Simple | Complex |
 | Sorted Output | ❌ No | ✅ Yes |
@@ -279,8 +279,8 @@ The better sequential performance is because:
 ## Conclusion
 
 For pure write throughput in LSM-tree learning projects, **Vec-based MemTable is superior**:
-- 5-7x faster random writes
-- 2x faster sequential writes
+- 5-6x faster random writes
+- 1.6-2x faster sequential writes
 - Simpler implementation
 - Better cache performance
 
@@ -343,7 +343,7 @@ Comparing pure data structure performance with full MemTable implementation:
 
 **SkipMap-based:**
 - Pure SkipMap: 42-322 MiB/s
-- MemTable (with Mutex + I/O): 53-217 MiB/s
+- MemTable (with Mutex + I/O): 53-221 MiB/s
 - **Overhead**: Minimal to none (SkipMap insertion dominates)
 
 ### Key Findings

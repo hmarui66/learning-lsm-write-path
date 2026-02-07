@@ -33,9 +33,9 @@ LSM-Treeの書き込み処理における各種実装方式の性能を測定・
 
 LSM-Tree標準のSkipList-based MemTableによる性能検証。
 
-- 書き込み性能（Random）: 484-895K ops/s（53-99 MiB/s）
-- 書き込み性能（Sequential）: 1.5-2.0M ops/s（166-217 MiB/s）
-- Vec版との比較: 5-7倍遅い（Random）、2倍遅い（Sequential）
+- 書き込み性能（Random）: 480-862K ops/s（53-95 MiB/s）
+- 書き込み性能（Sequential）: 1.6-2.0M ops/s（170-221 MiB/s）
+- Vec版との比較: 5-6倍遅い（Random）、1.6-2倍遅い（Sequential）
 
 純粋なデータ構造の性能:
 - Vec append: 483-584 MiB/s（順序に関係なく一定）
@@ -50,7 +50,7 @@ LSM-Tree標準のSkipList-based MemTableによる性能検証。
 - ソート済み出力（SSTable作成が効率的）
 - 範囲クエリ対応
 - スレッドセーフ
-- 書き込み性能は5-7倍遅い
+- 書き込み性能は5-6倍遅い（Random）、1.6-2倍遅い（Sequential）
 - メモリ局所性が悪い
 
 ### 3. RocksDB Performance Baseline
@@ -72,7 +72,7 @@ RocksDBの性能をベースラインとして測定。
 | SkipList | 0.6M ops/s | 2.0M ops/s | ソート済み、範囲クエリ対応 |
 | RocksDB | 0.6M ops/s | 1.9M ops/s | プロダクション品質 |
 
-注: SkipList実装では書き込み順序により性能が変動する（ランダム: 0.5-0.9M ops/s、シーケンシャル: 1.5-2.0M ops/s）。
+注: SkipList実装では書き込み順序により性能が変動する（ランダム: 0.5-0.9M ops/s、シーケンシャル: 1.6-2.0M ops/s）。
 
 ## アーキテクチャ
 
@@ -118,8 +118,8 @@ SSTable File (.sst)
 
 - Rust: 1.93.0
 - Platform: macOS (aarch64-apple-darwin)
-- Benchmark Tool: Criterion 0.8.1
-- SkipList Library: crossbeam-skiplist 0.1
+- Benchmark Tool: Criterion 0.8.2
+- SkipList Library: crossbeam-skiplist 0.1.3
 
 ## ベンチマーク設定
 
